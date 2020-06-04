@@ -22,8 +22,10 @@ package com.webank.weid.rpc;
 import com.webank.weid.protocol.base.CredentialPojo;
 import com.webank.weid.protocol.base.EvidenceInfo;
 import com.webank.weid.protocol.base.HashString;
+import com.webank.weid.protocol.base.WeIdAuthentication;
 import com.webank.weid.protocol.base.WeIdPrivateKey;
 import com.webank.weid.protocol.inf.Hashable;
+import com.webank.weid.protocol.request.AuthenticationArgs;
 import com.webank.weid.protocol.response.ResponseData;
 
 /**
@@ -44,6 +46,12 @@ public interface EvidenceService {
      * @return evidence hash value. Return empty string if failed due to any reason.
      */
     ResponseData<String> createEvidence(Hashable object, WeIdPrivateKey weIdPrivateKey);
+
+    ResponseData<String> createEvidenceWithLog(
+        Hashable object,
+        String log,
+        WeIdAuthentication weIdAuthentication
+    );
 
     /**
      * Create a new evidence together with log and custom key. Other guys can use this custom key,
@@ -92,6 +100,12 @@ public interface EvidenceService {
         String log,
         WeIdPrivateKey weIdPrivateKey
     );
+
+    ResponseData<Integer> revoke(Hashable object, WeIdAuthentication weIdAuthentication);
+
+    ResponseData<Integer> unrevoke(Hashable object, WeIdAuthentication weIdAuthentication);
+
+    ResponseData<Boolean> isRevoked(EvidenceInfo evidenceInfo, String weId);
 
     /**
      * Get the evidence info from blockchain using hash as key.
