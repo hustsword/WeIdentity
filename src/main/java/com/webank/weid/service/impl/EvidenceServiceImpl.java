@@ -39,6 +39,7 @@ import com.webank.weid.protocol.base.CredentialPojo;
 import com.webank.weid.protocol.base.EvidenceInfo;
 import com.webank.weid.protocol.base.EvidenceSignInfo;
 import com.webank.weid.protocol.base.HashString;
+import com.webank.weid.protocol.base.WeIdAuthentication;
 import com.webank.weid.protocol.base.WeIdDocument;
 import com.webank.weid.protocol.base.WeIdPrivateKey;
 import com.webank.weid.protocol.inf.Hashable;
@@ -176,17 +177,87 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
     }
 
     /**
+     * Create a new evidence to blockchain and return the hash value, with appending log. This will
+     * fail if evidence already exists.
+     *
+     * @param object the given Java object
+     * @param log appendable log entry - can be null or empty
+     * @param weIdAuthentication weid authentication (only checks private key)
+     */
+    @Override
+    public ResponseData<String> createEvidenceWithLog(
+        Hashable object,
+        String log,
+        WeIdAuthentication weIdAuthentication
+    ) {
+        ResponseData<String> hashResp = getHashValue(object);
+        if (StringUtils.isEmpty(hashResp.getResult())) {
+            return new ResponseData<>(StringUtils.EMPTY, hashResp.getErrorCode(),
+                hashResp.getErrorMessage());
+        }
+        if (weIdAuthentication == null
+            || !WeIdUtils.isPrivateKeyValid(weIdAuthentication.getWeIdPrivateKey())) {
+            return new ResponseData<>(StringUtils.EMPTY,
+                ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
+        }
+        if (!DataToolUtils.isUtf8String(log)) {
+            logger.error("Evidence argument illegal input: log.");
+            return new ResponseData<>(StringUtils.EMPTY, ErrorCode.ILLEGAL_INPUT);
+        }
+        if (!isChainStringLengthValid(log)) {
+            return new ResponseData<>(StringUtils.EMPTY, ErrorCode.ON_CHAIN_STRING_TOO_LONG);
+        }
+        return hashToNewEvidence(
+            hashResp.getResult(),
+            weIdAuthentication.getWeIdPrivateKey().getPrivateKey(),
+            log);
+    }
+
+    /**
      * Add log entry for an existing evidence. This log will be recorded on blockchain permanently,
      * and finally it will be fetched as a list when trying to get evidence.
      *
      * @param hashValue hash value
-     * @param log log entry - can be null or empty
+     * @param log not null log entry
      * @param weIdPrivateKey the signer WeID's private key
      */
     @Override
     public ResponseData<Boolean> addLogByHash(String hashValue, String log,
         WeIdPrivateKey weIdPrivateKey) {
-        if (!DataToolUtils.isValidHash(hashValue) || StringUtils.isEmpty(log)
+        return addByHash(
+            hashValue,
+            log,
+            weIdPrivateKey,
+            false
+        );
+    }
+
+    /**
+     * Add signature and log as a new signer to an existing evidence. Log can be empty.
+     *
+     * @param hashValue hash value
+     * @param log log entry
+     * @param weIdPrivateKey the signer WeID's private key
+     * @return true if succeeded, false otherwise
+     */
+    @Override
+    public ResponseData<Boolean> addSignatureAndLogByHash(String hashValue, String log,
+        WeIdPrivateKey weIdPrivateKey) {
+        return addByHash(
+            hashValue,
+            log,
+            weIdPrivateKey,
+            true
+        );
+    }
+
+    private ResponseData<Boolean> addByHash(
+        String hashValue,
+        String log,
+        WeIdPrivateKey weIdPrivateKey,
+        boolean requireSig
+    ) {
+        if (!DataToolUtils.isValidHash(hashValue) || (StringUtils.isEmpty(log) && !requireSig)
             || !DataToolUtils.isUtf8String(log)) {
             logger.error("Evidence argument illegal input: hash or log.");
             return new ResponseData<>(false, ErrorCode.ILLEGAL_INPUT);
@@ -198,30 +269,130 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
             return new ResponseData<>(false, ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
         }
         Long timestamp = DateUtils.getNoMillisecondTimeStamp();
-        return evidenceServiceEngine.addLog(
-            hashValue,
+        if (requireSig) {
+            String signature = DataToolUtils.secp256k1Sign(hashValue,
+                new BigInteger(weIdPrivateKey.getPrivateKey()));
+            return evidenceServiceEngine.addLog(
+                hashValue,
+                signature,
+                log,
+                timestamp,
+                weIdPrivateKey.getPrivateKey()
+            );
+        } else {
+            return evidenceServiceEngine.addLog(
+                hashValue,
+                StringUtils.EMPTY,
+                log,
+                timestamp,
+                weIdPrivateKey.getPrivateKey()
+            );
+        }
+    }
+
+    /**
+     * Add log entry for an existing evidence, appending on existing log entries. This log will be
+     * recorded on blockchain permanently, and finally it will be fetched as a list when trying to
+     * get evidence. Log must not be empty. It will firstly try to fetch the hash value given the
+     * custom key, and if the hash value does not exist, it will use the supplementing hash value
+     * (1st parameter) to make up.
+     *
+     * @param hashValueSupplement the hash value supplement if the custom key does not exist
+     * @param customKey custom key
+     * @param log Not null log entry
+     * @param weIdPrivateKey the signer WeID's private key
+     * @return true if succeeded, false otherwise
+     */
+    @Override
+    public ResponseData<Boolean> addLogByCustomKey(
+        String hashValueSupplement,
+        String customKey,
+        String log,
+        WeIdPrivateKey weIdPrivateKey) {
+        return addByCustomKey(
+            hashValueSupplement,
+            customKey,
             log,
-            timestamp,
-            weIdPrivateKey.getPrivateKey()
+            weIdPrivateKey,
+            false
         );
     }
 
+    /**
+     * Add signature and log as a new signer to an existing evidence. Log can be empty.
+     *
+     * @param hashValueSupplement the hash value supplement if the custom key does not exist
+     * @param customKey custom key
+     * @param log log entry
+     * @param weIdPrivateKey the signer WeID's private key
+     * @return true if succeeded, false otherwise
+     */
     @Override
-    public ResponseData<Boolean> addLogByCustomKey(String customKey, String log,
-        WeIdPrivateKey weIdPrivateKey) {
+    public ResponseData<Boolean> addSignatureAndLogByCustomKey(
+        String hashValueSupplement,
+        String customKey,
+        String log,
+        WeIdPrivateKey weIdPrivateKey
+    ) {
+        return addByCustomKey(
+            hashValueSupplement,
+            customKey,
+            log,
+            weIdPrivateKey,
+            true
+        );
+    }
+
+    private ResponseData<Boolean> addByCustomKey(
+        String hashValueSupplement,
+        String customKey,
+        String log,
+        WeIdPrivateKey weIdPrivateKey,
+        boolean requireSig
+    ) {
+        if ((StringUtils.isEmpty(log) && !requireSig) || !DataToolUtils.isUtf8String(log)) {
+            logger.error("Evidence argument illegal input: log.");
+            return new ResponseData<>(false, ErrorCode.ILLEGAL_INPUT);
+        }
         if (StringUtils.isEmpty(customKey) || !DataToolUtils.isUtf8String(customKey)) {
-            logger.error("Evidence argument illegal input. ");
+            logger.error("Evidence argument illegal input: customKey.");
             return new ResponseData<>(false, ErrorCode.ILLEGAL_INPUT);
         }
         if (!isChainStringLengthValid(log)) {
             return new ResponseData<>(false, ErrorCode.ON_CHAIN_STRING_TOO_LONG);
         }
         ResponseData<String> hashResp = evidenceServiceEngine.getHashByCustomKey(customKey);
-        if (StringUtils.isEmpty(hashResp.getResult())) {
-            return new ResponseData<>(false, hashResp.getErrorCode(),
-                hashResp.getErrorMessage());
+        String hashValue = hashResp.getResult();
+        if (StringUtils.isEmpty(hashValue)) {
+            logger.error("Failed to find the hash value from custom key: ", customKey);
+            if (StringUtils.isEmpty(hashValueSupplement)) {
+                return new ResponseData<>(false, hashResp.getErrorCode(),
+                    hashResp.getErrorMessage());
+            }
+            hashValue = hashValueSupplement;
         }
-        return this.addLogByHash(hashResp.getResult(), log, weIdPrivateKey);
+        Long timestamp = DateUtils.getNoMillisecondTimeStamp();
+        if (requireSig) {
+            String signature = DataToolUtils.secp256k1Sign(hashValue,
+                new BigInteger(weIdPrivateKey.getPrivateKey()));
+            return evidenceServiceEngine.addLogByCustomKey(
+                hashValue,
+                signature,
+                log,
+                timestamp,
+                customKey,
+                weIdPrivateKey.getPrivateKey()
+            );
+        } else {
+            return evidenceServiceEngine.addLogByCustomKey(
+                hashValue,
+                StringUtils.EMPTY,
+                log,
+                timestamp,
+                customKey,
+                weIdPrivateKey.getPrivateKey()
+            );
+        }
     }
 
     /* (non-Javadoc)

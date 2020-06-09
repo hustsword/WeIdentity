@@ -45,8 +45,18 @@ public interface EvidenceServiceEngine {
 
     ResponseData<Boolean> addLog(
         String hashValue,
+        String sig,
         String log,
         Long timestamp,
+        String privateKey
+    );
+
+    ResponseData<Boolean> addLogByCustomKey(
+        String hashValue,
+        String signature,
+        String log,
+        Long timestamp,
+        String customKey,
         String privateKey
     );
 
