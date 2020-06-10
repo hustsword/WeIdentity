@@ -24,9 +24,11 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bcos.web3j.crypto.Sign.SignatureData;
 import org.slf4j.Logger;
@@ -169,8 +171,7 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
                 hashResp.getErrorMessage());
         }
         if (!WeIdUtils.isPrivateKeyValid(weIdPrivateKey)) {
-            return new ResponseData<>(StringUtils.EMPTY,
-                ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
+            return new ResponseData<>(StringUtils.EMPTY, ErrorCode.WEID_PRIVATEKEY_INVALID);
         }
         return hashToNewEvidence(hashResp.getResult(), weIdPrivateKey.getPrivateKey(),
             StringUtils.EMPTY);
@@ -197,8 +198,7 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
         }
         if (weIdAuthentication == null
             || !WeIdUtils.isPrivateKeyValid(weIdAuthentication.getWeIdPrivateKey())) {
-            return new ResponseData<>(StringUtils.EMPTY,
-                ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
+            return new ResponseData<>(StringUtils.EMPTY, ErrorCode.WEID_PRIVATEKEY_INVALID);
         }
         if (!DataToolUtils.isUtf8String(log)) {
             logger.error("Evidence argument illegal input: log.");
@@ -266,7 +266,7 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
             return new ResponseData<>(false, ErrorCode.ON_CHAIN_STRING_TOO_LONG);
         }
         if (!WeIdUtils.isPrivateKeyValid(weIdPrivateKey)) {
-            return new ResponseData<>(false, ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
+            return new ResponseData<>(false, ErrorCode.WEID_PRIVATEKEY_INVALID);
         }
         Long timestamp = DateUtils.getNoMillisecondTimeStamp();
         if (requireSig) {
@@ -750,7 +750,7 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
         }
         if (!WeIdUtils.isPrivateKeyValid(weIdPrivateKey)) {
             return new ResponseData<>(StringUtils.EMPTY,
-                ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS);
+                ErrorCode.WEID_PRIVATEKEY_INVALID);
         }
         String privateKey = weIdPrivateKey.getPrivateKey();
         try {
@@ -818,5 +818,81 @@ public class EvidenceServiceImpl extends AbstractService implements EvidenceServ
 
     private boolean isChainStringLengthValid(String string) {
         return string.length() < WeIdConstant.ON_CHAIN_STRING_LENGTH;
+    }
+
+    /**
+     * Revoke an evidence - which can be un-revoked.
+     *
+     * @param object the object
+     * @param weIdAuthentication the weid authentication
+     * @return true if yes, false otherwise, with error codes
+     */
+    @Override
+    public ResponseData<Boolean> revoke(Hashable object, WeIdAuthentication weIdAuthentication) {
+        ResponseData<String> hashResp = getHashValue(object);
+        if (StringUtils.isEmpty(hashResp.getResult())) {
+            return new ResponseData<>(false, hashResp.getErrorCode(),
+                hashResp.getErrorMessage());
+        }
+        if (weIdAuthentication == null
+            || !WeIdUtils.isPrivateKeyValid(weIdAuthentication.getWeIdPrivateKey())) {
+            return new ResponseData<>(false, ErrorCode.WEID_PRIVATEKEY_INVALID);
+        }
+        Long timestamp = DateUtils.getNoMillisecondTimeStamp();
+        return evidenceServiceEngine.setAttribute(
+            hashResp.getResult(),
+            WeIdConstant.EVIDENCE_REVOKE_KEY,
+            StringUtils.EMPTY,
+            timestamp,
+            weIdAuthentication.getWeIdPrivateKey().getPrivateKey()
+        );
+    }
+
+    /**
+     * Revoke an evidence - which can be un-revoked.
+     *
+     * @param object the object
+     * @param weIdAuthentication the weid authentication
+     * @return true if yes, false otherwise, with error codes
+     */
+    @Override
+    public ResponseData<Boolean> unRevoke(Hashable object, WeIdAuthentication weIdAuthentication) {
+        ResponseData<String> hashResp = getHashValue(object);
+        if (StringUtils.isEmpty(hashResp.getResult())) {
+            return new ResponseData<>(false, hashResp.getErrorCode(),
+                hashResp.getErrorMessage());
+        }
+        if (weIdAuthentication == null
+            || !WeIdUtils.isPrivateKeyValid(weIdAuthentication.getWeIdPrivateKey())) {
+            return new ResponseData<>(false, ErrorCode.WEID_PRIVATEKEY_INVALID);
+        }
+        Long timestamp = DateUtils.getNoMillisecondTimeStamp();
+        return evidenceServiceEngine.setAttribute(
+            hashResp.getResult(),
+            WeIdConstant.EVIDENCE_UNREVOKE_KEY,
+            StringUtils.EMPTY,
+            timestamp,
+            weIdAuthentication.getWeIdPrivateKey().getPrivateKey()
+        );
+    }
+
+    /**
+     * Check whether this evidence is revoked by this WeID.
+     *
+     * @param evidenceInfo the EvidenceInfo
+     * @param weId the signer WeID
+     * @return true if revoked, false otherwise
+     */
+    @Override
+    public ResponseData<Boolean> isRevoked(EvidenceInfo evidenceInfo, String weId) {
+        if (evidenceInfo == null) {
+            return new ResponseData<>(false, ErrorCode.ILLEGAL_INPUT);
+        }
+        Map<String, EvidenceSignInfo> evidenceSignInfos = evidenceInfo.getSignInfo();
+        if (evidenceSignInfos == null || evidenceSignInfos.size() == 0
+            || evidenceSignInfos.get(weId) == null) {
+            return new ResponseData<>(false, ErrorCode.WEID_DOES_NOT_EXIST);
+        }
+        return new ResponseData<>(evidenceSignInfos.get(weId).getRevoked(), ErrorCode.SUCCESS);
     }
 }

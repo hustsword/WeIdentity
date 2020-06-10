@@ -85,4 +85,11 @@ public interface EvidenceServiceEngine {
 
     ResponseData<EvidenceInfo> getInfoByCustomKey(String extraKey);
 
+    ResponseData<Boolean> setAttribute(
+        String hashValue,
+        String key,
+        String value,
+        Long timestamp,
+        String privateKey
+    );
 }

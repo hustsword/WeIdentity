@@ -424,4 +424,15 @@ public class EvidenceServiceEngineV1 extends BaseEngine implements EvidenceServi
 
         return new ResponseData<EvidenceInfo>(null, ErrorCode.FISCO_BCOS_VERSION_NOT_SUPPORTED);
     }
+
+    @Override
+    public ResponseData<Boolean> setAttribute(
+        String hashValue,
+        String key,
+        String value,
+        Long timestamp,
+        String privateKey
+    ) {
+        return new ResponseData<>(false, ErrorCode.FISCO_BCOS_VERSION_NOT_SUPPORTED);
+    }
 }

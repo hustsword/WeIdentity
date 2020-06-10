@@ -40,6 +40,7 @@ import com.webank.weid.full.TestBaseService;
 import com.webank.weid.protocol.base.Credential;
 import com.webank.weid.protocol.base.CredentialPojo;
 import com.webank.weid.protocol.base.EvidenceInfo;
+import com.webank.weid.protocol.base.WeIdAuthentication;
 import com.webank.weid.protocol.request.TransactionArgs;
 import com.webank.weid.protocol.response.CreateWeIdDataResult;
 import com.webank.weid.protocol.response.ResponseData;
@@ -532,6 +533,41 @@ public class TestCreateEvidence extends TestBaseService {
     }
 
     /**
+     * Test status: revoked.
+     */
+    @Test
+    public void testSetRevokeStatus() {
+        CreateWeIdDataResult tempCreateWeIdResultWithSetAttr = createWeId();
+        CredentialPojo credential = createCredentialPojo(createCredentialPojoArgs);
+        credential.setId(UUID.randomUUID().toString());
+        String hash = evidenceService.generateHash(credential).getResult().getHash();
+        ResponseData<String> createResp1 = evidenceService.createEvidence(credential,
+            tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        WeIdAuthentication weIdAuthentication = new WeIdAuthentication();
+        weIdAuthentication
+            .setWeIdPrivateKey(tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        ResponseData<Boolean> revokeResp = evidenceService.revoke(credential, weIdAuthentication);
+        Assert.assertTrue(revokeResp.getResult());
+        ResponseData<EvidenceInfo> getResp = evidenceService.getEvidence(credential.getHash());
+        Assert.assertNotNull(getResp.getResult());
+        Assert.assertTrue(getResp.getResult().getSignInfo()
+            .get(tempCreateWeIdResultWithSetAttr.getWeId()).getRevoked());
+        revokeResp = evidenceService.unRevoke(credential, weIdAuthentication);
+        getResp = evidenceService.getEvidence(credential.getHash());
+        Assert.assertFalse(getResp.getResult().getSignInfo()
+            .get(tempCreateWeIdResultWithSetAttr.getWeId()).getRevoked());
+        revokeResp = evidenceService.revoke(credential, weIdAuthentication);
+        getResp = evidenceService.getEvidence(credential.getHash());
+        Assert.assertTrue(getResp.getResult().getSignInfo()
+            .get(tempCreateWeIdResultWithSetAttr.getWeId()).getRevoked());
+        EvidenceInfo evidenceInfo = getResp.getResult();
+        Assert.assertFalse(evidenceService.isRevoked(
+            evidenceInfo, createWeIdResultWithSetAttr.getWeId()).getResult());
+        Assert.assertTrue(evidenceService.isRevoked(
+            evidenceInfo, tempCreateWeIdResultWithSetAttr.getWeId()).getResult());
+    }
+
+    /**
      * case3: weIdPrivateKey is null.
      */
     @Test
@@ -541,7 +577,7 @@ public class TestCreateEvidence extends TestBaseService {
         LogUtil.info(logger, "createEvidence", response);
 
         Assert.assertEquals(
-            ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS.getCode(),
+            ErrorCode.WEID_PRIVATEKEY_INVALID.getCode(),
             response.getErrorCode().intValue());
         Assert.assertFalse(!response.getResult().isEmpty());
     }
@@ -559,7 +595,7 @@ public class TestCreateEvidence extends TestBaseService {
             .createEvidence(credential, tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
         LogUtil.info(logger, "createEvidence", response);
         Assert.assertEquals(
-            ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS.getCode(),
+            ErrorCode.WEID_PRIVATEKEY_INVALID.getCode(),
             response.getErrorCode().intValue());
         Assert.assertFalse(!response.getResult().isEmpty());
     }
@@ -577,7 +613,7 @@ public class TestCreateEvidence extends TestBaseService {
             .createEvidence(credential, tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
         LogUtil.info(logger, "createEvidence", response);
         Assert.assertEquals(
-            ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS.getCode(),
+            ErrorCode.WEID_PRIVATEKEY_INVALID.getCode(),
             response.getErrorCode().intValue());
         Assert.assertFalse(!response.getResult().isEmpty());
     }
@@ -595,7 +631,7 @@ public class TestCreateEvidence extends TestBaseService {
             .createEvidence(credential, tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
         LogUtil.info(logger, "createEvidence", response);
         Assert.assertEquals(
-            ErrorCode.CREDENTIAL_PRIVATE_KEY_NOT_EXISTS.getCode(),
+            ErrorCode.WEID_PRIVATEKEY_INVALID.getCode(),
             response.getErrorCode().intValue());
         Assert.assertFalse(!response.getResult().isEmpty());
     }

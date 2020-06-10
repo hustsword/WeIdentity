@@ -152,11 +152,25 @@ public interface EvidenceService {
      * @param weIdAuthentication the weid authentication
      * @return true if yes, false otherwise, with error codes
      */
-//    ResponseData<Boolean> revoke(Hashable object, WeIdAuthentication weIdAuthentication);
-//
-//    ResponseData<Boolean> unrevoke(Hashable object, WeIdAuthentication weIdAuthentication);
-//
-//    ResponseData<Boolean> isRevoked(EvidenceInfo evidenceInfo, String weId);
+    ResponseData<Boolean> revoke(Hashable object, WeIdAuthentication weIdAuthentication);
+
+    /**
+     * Un-revoke an evidence.
+     *
+     * @param object the object
+     * @param weIdAuthentication the weid authentication
+     * @return true if yes, false otherwise, with error codes
+     */
+    ResponseData<Boolean> unRevoke(Hashable object, WeIdAuthentication weIdAuthentication);
+
+    /**
+     * Check whether this evidence is revoked by this WeID.
+     *
+     * @param evidenceInfo the EvidenceInfo
+     * @param weId the signer WeID
+     * @return true if revoked, false otherwise
+     */
+    ResponseData<Boolean> isRevoked(EvidenceInfo evidenceInfo, String weId);
 
     /**
      * Get the evidence info from blockchain using hash as key.
