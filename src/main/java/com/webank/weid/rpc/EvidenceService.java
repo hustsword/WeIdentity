@@ -145,9 +145,16 @@ public interface EvidenceService {
         WeIdPrivateKey weIdPrivateKey
     );
 
-//    ResponseData<Integer> revoke(Hashable object, WeIdAuthentication weIdAuthentication);
+    /**
+     * Revoke an evidence - which can be un-revoked.
+     *
+     * @param object the object
+     * @param weIdAuthentication the weid authentication
+     * @return true if yes, false otherwise, with error codes
+     */
+//    ResponseData<Boolean> revoke(Hashable object, WeIdAuthentication weIdAuthentication);
 //
-//    ResponseData<Integer> unrevoke(Hashable object, WeIdAuthentication weIdAuthentication);
+//    ResponseData<Boolean> unrevoke(Hashable object, WeIdAuthentication weIdAuthentication);
 //
 //    ResponseData<Boolean> isRevoked(EvidenceInfo evidenceInfo, String weId);
 

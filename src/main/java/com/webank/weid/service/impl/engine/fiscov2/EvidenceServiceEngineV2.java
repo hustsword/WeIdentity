@@ -149,9 +149,12 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContract.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
+            if (eventList == null) {
                 return new ResponseData<>(StringUtils.EMPTY,
                     ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(StringUtils.EMPTY,
+                    ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS, info);
             } else {
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
                     if (event.sigs.toArray()[0].toString().equalsIgnoreCase(signature)
@@ -219,9 +222,11 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContractWriter.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
-                return new ResponseData<>(result,
-                    ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            if (eventList == null) {
+                return new ResponseData<>(result, ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(result, ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS,
+                    info);
             } else {
                 List<String> returnedHashs = new ArrayList<>();
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
@@ -297,9 +302,12 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContractWriter.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
+            if (eventList == null) {
                 return new ResponseData<>(result,
                     ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(result, ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS,
+                    info);
             } else {
                 List<String> returnedHashs = new ArrayList<>();
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
@@ -361,8 +369,10 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContractWriter.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
+            if (eventList == null) {
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(false, ErrorCode.CREDENTIAL_EVIDENCE_NOT_EXIST, info);
             } else {
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
                     if (event.signer.toArray()[0].toString().equalsIgnoreCase(address)) {
@@ -424,8 +434,10 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContractWriter.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
+            if (eventList == null) {
                 return new ResponseData<>(false, ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(false, ErrorCode.CREDENTIAL_EVIDENCE_NOT_EXIST, info);
             } else {
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
                     if (event.signer.toArray()[0].toString().equalsIgnoreCase(address)) {
@@ -731,9 +743,12 @@ public class EvidenceServiceEngineV2 extends BaseEngine implements EvidenceServi
             TransactionInfo info = new TransactionInfo(receipt);
             List<EvidenceAttributeChangedEventResponse> eventList =
                 evidenceContractWriter.getEvidenceAttributeChangedEvents(receipt);
-            if (eventList == null || eventList.isEmpty()) {
+            if (eventList == null) {
                 return new ResponseData<>(StringUtils.EMPTY,
                     ErrorCode.CREDENTIAL_EVIDENCE_BASE_ERROR, info);
+            } else if (eventList.isEmpty()) {
+                return new ResponseData<>(StringUtils.EMPTY,
+                    ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS, info);
             } else {
                 for (EvidenceAttributeChangedEventResponse event : eventList) {
                     if (event.sigs.toArray()[0].toString().equalsIgnoreCase(signature)

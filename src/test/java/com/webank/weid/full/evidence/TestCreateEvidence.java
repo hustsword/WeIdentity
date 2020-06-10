@@ -158,6 +158,39 @@ public class TestCreateEvidence extends TestBaseService {
     }
 
     @Test
+    public void testCreateEvidenceDupAndNonExist() {
+        CreateWeIdDataResult tempCreateWeIdResultWithSetAttr =
+            super.copyCreateWeId(createWeIdResultWithSetAttr);
+        CredentialPojo credential = createCredentialPojo(createCredentialPojoArgs);
+        credential.setId(UUID.randomUUID().toString());
+        String hash = evidenceService.generateHash(credential).getResult().getHash();
+        ResponseData<String> createResp1 = evidenceService.createEvidence(credential,
+            tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        ResponseData<String> createResp2 = evidenceService.createEvidence(credential,
+            tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        Assert.assertEquals(createResp1.getResult(), hash);
+        Assert.assertEquals(createResp2.getResult(), StringUtils.EMPTY);
+        Assert.assertEquals(createResp2.getErrorCode().intValue(),
+            ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS.getCode());
+        createResp2 = evidenceService.createEvidenceWithLogAndCustomKey(credential,
+            tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey(), "a", credential.getId());
+        Assert.assertEquals(createResp2.getResult(), StringUtils.EMPTY);
+        Assert.assertEquals(createResp2.getErrorCode().intValue(),
+            ErrorCode.CREDENTIAL_EVIDENCE_ALREADY_EXISTS.getCode());
+        credential.setId(UUID.randomUUID().toString());
+        ResponseData<Boolean> addResp1 = evidenceService.addLogByHash(credential.getHash(), "a",
+            tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        Assert.assertEquals(addResp1.getResult(), false);
+        Assert.assertEquals(addResp1.getErrorCode().intValue(),
+            ErrorCode.CREDENTIAL_EVIDENCE_NOT_EXIST.getCode());
+        ResponseData<Boolean> addResp2 = evidenceService.addSignatureAndLogByHash(
+            credential.getHash(), "a", tempCreateWeIdResultWithSetAttr.getUserWeIdPrivateKey());
+        Assert.assertEquals(addResp2.getResult(), false);
+        Assert.assertEquals(addResp2.getErrorCode().intValue(),
+            ErrorCode.CREDENTIAL_EVIDENCE_NOT_EXIST.getCode());
+    }
+
+    @Test
     public void testCreateEvidence_MultipleSigners() {
         CreateWeIdDataResult tempCreateWeIdResultWithSetAttr =
             super.copyCreateWeId(createWeIdResultWithSetAttr);
